@@ -22,20 +22,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define  ARRAYSIZE    8
+#define  ARRAYSIZE    12
 #define  MASTER       0
 
 double data[ARRAYSIZE];
 int world_size; // Numero de processos
 int world_rank; // Identificacao do processo
-int        rc,
-         dest,
-       endereco,
-         tag1,
-         tag2,
-       source,  // Processo origem
-    tamanho_do_Pedaco;
+int rc,
+        dest,
+        endereco,
+        tag1,
+        tag2,
+        source,  // Processo origem
+tamanho_do_Pedaco;
 
+bool debug = false; // Imprime os vetores antes de recv, depois de Recv e depois de update
+bool debug2 = true; // Imprime o vetor final
 double mysum, sum;
 MPI_Status status;
 
@@ -45,16 +47,23 @@ MPI_Status status;
  *  E imprime a soma deste subvetor e o numero do processo
  *  que gerencia esta parte do vetor
  */
-double update(int meuEndereco, int tamPedaco, int myWorld_rank) {
-    double mySum=0.0;
+double update(int meuEndereco, int tamPedaco, int world_rank) {
+    double mySum = 0.0;
 
     /* Perform addition to each of my array elements and keep my sum */
     for (int i = meuEndereco; i < meuEndereco + tamPedaco; i++) {
         data[i] = data[i] + i * 1.0;
         mySum = mySum + data[i];
     }
-    printf("Processo %d minha soma = %e\n", myWorld_rank, mySum);
+    printf("Processo %d minha soma = %6.1f\n", world_rank, mySum);
     return (mySum);
+}
+
+int minimo(int a, int b) {
+    if (a > b)
+        return b;
+    else
+        return a;
 }
 
 int main() {
@@ -70,18 +79,18 @@ int main() {
     }
     printf("MPI task %d has started...\n", world_rank);
     tamanho_do_Pedaco = (ARRAYSIZE / world_size);
-    tag2 = 1;
-    tag1 = 2;
+    tag2 = 2;
+    tag1 = 1;
 
     //* **** Master task only ***** */
     if (world_rank == MASTER) {
 
         /* Initialize the array */
         sum = 0.0;
-        printf ("\nVetor data(%d) = ( ",world_rank);
+        printf("\nVetor data(%d) = ( ", world_rank);
         for (int i = 0; i < ARRAYSIZE; i++) {
-            data[i] = (i+1) * 1.0;
-            printf("%4.1f",data[i]);
+            data[i] = (i + 1) * 1.0;
+            printf(" %4.0f", data[i]);
             sum = sum + data[i];
         }
         printf(" )\nInitialized array sum = %4.1f\n", sum);
@@ -89,58 +98,89 @@ int main() {
         /* Send each task its portion of the array - master keeps 1st part */
         endereco = tamanho_do_Pedaco;
         for (dest = 1; dest < world_size; dest++) {
+            // Envia o endereco para o precesso destino
             MPI_Send(&endereco, 1, MPI_INT, dest, tag1, MPI_COMM_WORLD);
-            MPI_Send(&data[endereco], tamanho_do_Pedaco, MPI_FLOAT, dest, tag2, MPI_COMM_WORLD);
+            MPI_Send(&data[endereco], tamanho_do_Pedaco, MPI_DOUBLE, dest, tag2, MPI_COMM_WORLD);
             printf("Enviados %d elementos para processo %d endereco = %d\n", tamanho_do_Pedaco, dest, endereco);
             endereco = endereco + tamanho_do_Pedaco; // Atualiza o endereço para o próximo processo
         }
 
         /* Master does its part of the work */
         endereco = 0;
+        // Atualiza e a sub rotina update imprime a soma do processo master
         mysum = update(endereco, tamanho_do_Pedaco, world_rank);
 
         /* Wait to receive results from each task */
         for (int i = 1; i < world_size; i++) {
             source = i;
             MPI_Recv(&endereco, 1, MPI_INT, source, tag1, MPI_COMM_WORLD, &status);
-            MPI_Recv(&data[endereco], tamanho_do_Pedaco, MPI_FLOAT, source, tag2,
-                     MPI_COMM_WORLD, &status);
+            MPI_Recv(&data[endereco], tamanho_do_Pedaco, MPI_DOUBLE, source, tag2, MPI_COMM_WORLD, &status);
         }
 
-       /* Get final sum and print sample results */
-        MPI_Reduce(&mysum, &sum, 1, MPI_FLOAT, MPI_SUM, MASTER, MPI_COMM_WORLD);
-        printf("Sample results: \n");
+        /* Get final sum and print sample results */
+        MPI_Reduce(&mysum, &sum, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+        printf("  Alguns resultados: \n");
         endereco = 0;
         for (int i = 0; i < world_size; i++) {
-            for (int j = 0; j < 5; j++)
-                printf("  %e", data[endereco + j]);
+            printf("Vetor(%d) = ", i);
+            for (int j = 0; j < minimo(5, tamanho_do_Pedaco); j++)
+                printf("  %5.1f", data[endereco + j]);
             printf("\n");
             endereco = endereco + tamanho_do_Pedaco;
         }
-        printf("*** Final sum= %e ***\n", sum);
+        printf("  Soma final = %6.1f \n", sum);
+
+        if (debug2) {
+            printf("\nVetor final data(%d) = ( ", world_rank);
+            for (int i = 0; i < ARRAYSIZE; i++) {
+                printf(" %4.0f", data[i]);
+            }
+            printf(" )\n");
+        }
 
     }  /* end of master section */
 
-
-
-/***** Non-master tasks only *****/
-
+    //***** Non-master tasks only *****/
     if (world_rank > MASTER) {
 
-/* Receive my portion of array from the master task */
+        if (debug) {
+            printf("\nVetor antes de recv data(%d) = ( ", world_rank);
+            for (int i = 0; i < ARRAYSIZE; i++) {
+                printf(" %5.1f", data[i]);
+            }
+            printf(" )\n");
+        }
+
+
+        /* Receive my portion of array from the master task */
         source = MASTER;
         MPI_Recv(&endereco, 1, MPI_INT, source, tag1, MPI_COMM_WORLD, &status);
-        MPI_Recv(&data[endereco], tamanho_do_Pedaco, MPI_FLOAT, source, tag2,
-                 MPI_COMM_WORLD, &status);
+        MPI_Recv(&data[endereco], tamanho_do_Pedaco, MPI_DOUBLE, source, tag2, MPI_COMM_WORLD, &status);
 
+        if (debug) {
+            printf("\nVetor depois de recv data(%d) = ( ", world_rank);
+            for (int i = 0; i < ARRAYSIZE; i++) {
+                printf(" %5.1f", data[i]);
+            }
+            printf(" )\n");
+        }
+
+        // Atualiza o pedaco do vetor e a sub rotina update imprime a soma deste pedaco do vetor
         mysum = update(endereco, tamanho_do_Pedaco, world_rank);
 
-/* Send my results back to the master task */
+        if (debug) {
+            printf("\nVetor depois de atualizar data(%d) = ( ", world_rank);
+            for (int i = 0; i < ARRAYSIZE; i++) {
+                printf(" %5.1f", data[i]);
+            }
+            printf(" )\n");
+        }
+
+        /* Send my results back to the master task */
         dest = MASTER;
         MPI_Send(&endereco, 1, MPI_INT, dest, tag1, MPI_COMM_WORLD);
-        MPI_Send(&data[endereco], tamanho_do_Pedaco, MPI_FLOAT, MASTER, tag2, MPI_COMM_WORLD);
-
-        MPI_Reduce(&mysum, &sum, 1, MPI_FLOAT, MPI_SUM, MASTER, MPI_COMM_WORLD);
+        MPI_Send(&data[endereco], tamanho_do_Pedaco, MPI_DOUBLE, MASTER, tag2, MPI_COMM_WORLD);
+        MPI_Reduce(&mysum, &sum, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
 
     } /* end of non-master */
 
