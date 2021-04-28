@@ -1,0 +1,4 @@
+"C:\Program Files\JetBrains\CLion 2021.1\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=C:/msys64/mingw64/bin/clang.exe -DCMAKE_CXX_COMPILER=C:/msys64/mingw64/bin/clang++.exe -G "CodeBlocks - MinGW Makefiles" S:\Programacao\CParalelaUfrgs2020_2\MPI_Array
+-- Configuring done
+-- Generating done
+-- Build files have been written to: S:/Programacao/CParalelaUfrgs2020_2/MPI_Array/cmake-build-debug
