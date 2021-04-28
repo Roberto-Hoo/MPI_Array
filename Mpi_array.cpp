@@ -118,7 +118,7 @@ int main() {
         }
 
         /* Get final sum and print sample results */
-        MPI_Reduce(&mysum, &sum, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+        //MPI_Reduce(&mysum, &sum, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
         printf("  Alguns resultados: \n");
         endereco = 0;
         for (int i = 0; i < world_size; i++) {
@@ -128,7 +128,7 @@ int main() {
             printf("\n");
             endereco = endereco + tamanho_do_Pedaco;
         }
-        printf("  Soma final = %6.1f \n", sum);
+        //printf("  Soma final = %6.1f \n", sum);
 
         if (debug2) {
             printf("\nVetor final data(%d) = ( ", world_rank);
@@ -180,9 +180,13 @@ int main() {
         dest = MASTER;
         MPI_Send(&endereco, 1, MPI_INT, dest, tag1, MPI_COMM_WORLD);
         MPI_Send(&data[endereco], tamanho_do_Pedaco, MPI_DOUBLE, MASTER, tag2, MPI_COMM_WORLD);
-        MPI_Reduce(&mysum, &sum, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+        //MPI_Reduce(&mysum, &sum, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
 
     } /* end of non-master */
+
+    MPI_Reduce(&mysum, &sum, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+    if (world_rank == MASTER)
+        printf("  Soma final = %6.1f \n", sum);
 
 
     MPI_Finalize();
