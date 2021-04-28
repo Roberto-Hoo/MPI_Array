@@ -40,15 +40,14 @@ double mysum, sum;
 MPI_Status status;
 
 double update(int meuEndereco, int tamPedaco, int myid) {
-    int i;
-    double mysum;
+    double mysum=0.0;
+
     /* Perform addition to each of my array elements and keep my sum */
-    mysum = 0;
-    for (i = meuEndereco; i < meuEndereco + tamPedaco; i++) {
+    for (int i = meuEndereco; i < meuEndereco + tamPedaco; i++) {
         data[i] = data[i] + i * 1.0;
         mysum = mysum + data[i];
     }
-    printf("Task %d mysum = %e\n", myid, mysum);
+    printf("Processo %d minha soma = %e\n", myid, mysum);
     return (mysum);
 }
 
