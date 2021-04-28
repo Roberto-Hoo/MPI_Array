@@ -39,16 +39,22 @@ int        rc,
 double mysum, sum;
 MPI_Status status;
 
-double update(int meuEndereco, int tamPedaco, int myid) {
-    double mysum=0.0;
+/*
+ *  Sub rotina que atualiza cada subpedaco da vetor
+ *  data[i] = data[i] + i * 1.0;
+ *  E imprime a soma deste subvetor e o numero do processo
+ *  que gerencia esta parte do vetor
+ */
+double update(int meuEndereco, int tamPedaco, int myWorld_rank) {
+    double mySum=0.0;
 
     /* Perform addition to each of my array elements and keep my sum */
     for (int i = meuEndereco; i < meuEndereco + tamPedaco; i++) {
         data[i] = data[i] + i * 1.0;
-        mysum = mysum + data[i];
+        mySum = mySum + data[i];
     }
-    printf("Processo %d minha soma = %e\n", myid, mysum);
-    return (mysum);
+    printf("Processo %d minha soma = %e\n", myWorld_rank, mySum);
+    return (mySum);
 }
 
 int main() {
@@ -85,7 +91,7 @@ int main() {
         for (dest = 1; dest < world_size; dest++) {
             MPI_Send(&endereco, 1, MPI_INT, dest, tag1, MPI_COMM_WORLD);
             MPI_Send(&data[endereco], tamanho_do_Pedaco, MPI_FLOAT, dest, tag2, MPI_COMM_WORLD);
-            printf("Enviados %d elementos para processo %d endereco= %d\n", tamanho_do_Pedaco, dest, endereco);
+            printf("Enviados %d elementos para processo %d endereco = %d\n", tamanho_do_Pedaco, dest, endereco);
             endereco = endereco + tamanho_do_Pedaco; // Atualiza o endereço para o próximo processo
         }
 
